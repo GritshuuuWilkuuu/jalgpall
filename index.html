@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>La Clásica</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{--bb:#004D98;--br:#A50044;--bg:#EDBB00;--mw:#F5F5F5;--mg:#C0A040;}
+*{margin:0;padding:0;box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Rajdhani',sans-serif;}
+#gw{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#0d1526,#050810);}
+canvas{display:block;}
+
+/* HUD */
+#hud{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:5px 10px;background:linear-gradient(180deg,rgba(0,0,0,.9),transparent);pointer-events:none;z-index:10;}
+.hteam{display:flex;align-items:center;gap:7px;}
+.badge{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:'Oswald',sans-serif;}
+.badge.b{background:linear-gradient(135deg,var(--bb) 50%,var(--br) 50%);}
+.badge.m{background:linear-gradient(135deg,var(--mg) 30%,var(--mw) 30%);color:#333;}
+.scr{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:#fff;letter-spacing:2px;text-shadow:0 0 12px rgba(237,187,0,.7);}
+.twrap{text-align:center;}
+.timer{font-family:'Oswald',sans-serif;font-size:20px;font-weight:600;color:var(--bg);letter-spacing:1px;}
+.hlbl{font-size:9px;color:rgba(255,255,255,.5);text-align:center;letter-spacing:2px;text-transform:uppercase;}
+/* Fullscreen button — always visible on HUD */
+#fsBtn{pointer-events:all;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;font-size:16px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+
+/* SCREENS */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,#0d1a35,#050810);z-index:100;}
+.screen.active{display:flex;}
+.slogo{font-family:'Oswald',sans-serif;font-size:clamp(18px,5vw,36px);font-weight:700;letter-spacing:4px;color:var(--bg);text-shadow:0 0 30px rgba(237,187,0,.5);margin-bottom:4px;}
+.ssub{font-family:'Rajdhani',sans-serif;font-size:clamp(12px,3vw,16px);color:rgba(255,255,255,.5);letter-spacing:3px;text-transform:uppercase;margin-bottom:28px;}
+.card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:22px 28px;width:min(90vw,350px);display:flex;flex-direction:column;gap:13px;backdrop-filter:blur(8px);}
+.btn{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;letter-spacing:2px;border:none;border-radius:8px;padding:12px 20px;cursor:pointer;transition:transform .1s;text-transform:uppercase;}
+.btn:active{transform:scale(.96);}
+.bp{background:linear-gradient(135deg,var(--bb),#0062be);color:#fff;box-shadow:0 4px 18px rgba(0,77,152,.4);}
+.bs{background:linear-gradient(135deg,var(--br),#c8004f);color:#fff;box-shadow:0 4px 18px rgba(165,0,68,.4);}
+.bg{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);}
+.inp{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-family:'Oswald',sans-serif;font-size:22px;font-weight:600;letter-spacing:4px;padding:11px 14px;text-align:center;width:100%;outline:none;}
+.inp:focus{border-color:var(--bg);}
+.inp::placeholder{color:rgba(255,255,255,.25);font-size:14px;letter-spacing:2px;}
+.div{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.25);font-size:12px;letter-spacing:2px;}
+.div::before,.div::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.1);}
+#codeDisp{font-family:'Oswald',sans-serif;font-size:34px;font-weight:700;letter-spacing:8px;color:var(--bg);text-align:center;}
+.clbl{font-size:11px;color:rgba(255,255,255,.4);text-align:center;letter-spacing:3px;text-transform:uppercase;}
+.sdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bg);margin-right:7px;animation:pulse 1.4s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+#statusMsg{color:rgba(255,255,255,.6);font-size:13px;text-align:center;}
+#errMsg{color:#ff4d6d;font-size:13px;text-align:center;min-height:17px;}
+
+/* Half/Full time */
+.htt{font-family:'Oswald',sans-serif;font-size:clamp(22px,7vw,52px);font-weight:700;color:#fff;letter-spacing:4px;text-transform:uppercase;text-align:center;margin-bottom:8px;}
+.hts{font-family:'Oswald',sans-serif;font-size:clamp(38px,11vw,82px);font-weight:700;color:var(--bg);letter-spacing:8px;margin-bottom:18px;}
+.htt2{display:flex;gap:28px;align-items:center;font-family:'Oswald',sans-serif;font-size:clamp(11px,3vw,18px);font-weight:600;letter-spacing:3px;color:rgba(255,255,255,.7);margin-bottom:22px;}
+.htt2 .sep{color:var(--bg);}
+.htcd{font-family:'Oswald',sans-serif;font-size:clamp(13px,3.5vw,20px);color:rgba(255,255,255,.45);letter-spacing:2px;}
+.wlbl{font-family:'Rajdhani',sans-serif;font-size:clamp(12px,3vw,17px);letter-spacing:3px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:5px;}
+.wnam{font-family:'Oswald',sans-serif;font-size:clamp(20px,6vw,40px);font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--bg);}
+
+/* Goal notif */
+#gnotif{position:absolute;top:55px;left:50%;transform:translateX(-50%) scale(0);color:#fff;font-family:'Oswald',sans-serif;font-size:clamp(15px,4.5vw,24px);font-weight:700;letter-spacing:3px;padding:9px 24px;border-radius:50px;pointer-events:none;white-space:nowrap;transition:transform .25s cubic-bezier(.34,1.56,.64,1);z-index:200;}
+#gnotif.show{transform:translateX(-50%) scale(1);}
+
+/* Touch controls */
+#tc{position:absolute;bottom:0;left:0;right:0;display:none;height:130px;pointer-events:none;z-index:50;}
+#tc.vis{display:flex;}
+#tl{position:absolute;left:14px;bottom:16px;pointer-events:all;}
+#tr{position:absolute;right:14px;bottom:16px;display:flex;flex-direction:column;gap:9px;align-items:flex-end;pointer-events:all;}
+#jw{position:relative;width:108px;height:108px;}
+#jb{position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);}
+#jk{position:absolute;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.35),rgba(255,255,255,.12));border:2px solid rgba(255,255,255,.3);top:50%;left:50%;transform:translate(-50%,-50%);}
+.ab{display:flex;align-items:center;justify-content:center;border-radius:50%;font-family:'Oswald',sans-serif;font-weight:700;color:#fff;cursor:pointer;border:3px solid transparent;transition:transform .1s;}
+.ab:active,.ab.pr{transform:scale(.87);}
+#kb{width:72px;height:72px;font-size:13px;letter-spacing:1px;background:radial-gradient(circle at 35% 35%,#A50044,#6a002b);border-color:rgba(255,100,100,.4);box-shadow:0 4px 18px rgba(165,0,68,.6);}
+#pb{width:58px;height:58px;font-size:12px;background:radial-gradient(circle at 35% 35%,#004D98,#002d5c);border-color:rgba(100,160,255,.4);box-shadow:0 4px 14px rgba(0,77,152,.6);}
+
+#rotp{display:none;position:fixed;inset:0;z-index:999;background:#000;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
+#rotp p{font-family:'Oswald',sans-serif;font-size:18px;letter-spacing:3px;color:rgba(255,255,255,.7);}
+@media (orientation:portrait) and (max-width:600px){#rotp{display:flex;}}
+</style>
+</head>
+<body>
+<div id="rotp">
+  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#EDBB00" stroke-width="1.5" style="animation:rot 2s linear infinite"><style>@keyframes rot{to{transform:rotate(360deg)}}</style><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="18" r="1"/></svg>
+  <p>PÖÖRA TELEFON KÜLILI</p>
+</div>
+
+<div id="gw">
+  <canvas id="gc"></canvas>
+
+  <div id="hud" style="display:none;">
+    <div class="hteam"><div class="badge b">FCB</div><span class="scr" id="sB">0</span></div>
+    <div class="twrap"><div class="hlbl" id="hlbl">1. POOLAEG</div><div class="timer" id="tmr">2:00</div></div>
+    <div class="hteam"><span class="scr" id="sM">0</span><div class="badge m">RMA</div></div>
+    <div id="fsBtn" title="Täisekraan">⛶</div>
+  </div>
+
+  <div id="tc">
+    <div id="tl"><div id="jw"><div id="jb"></div><div id="jk"></div></div></div>
+    <div id="tr"><div class="ab" id="kb">LÖÖK</div><div class="ab" id="pb">SÖÖT</div></div>
+  </div>
+
+  <div id="gnotif"></div>
+
+  <!-- LOBBY -->
+  <div class="screen active" id="sLobby">
+    <div class="slogo">⚽ LA CLÁSICA</div>
+    <div class="ssub">Barcelona · Real Madrid</div>
+    <div class="card">
+      <button class="btn bp" id="btnH">MÄNGI BARCELONA 🔵🔴</button>
+      <div class="div">VÕI</div>
+      <input class="inp" id="inpCode" maxlength="6" placeholder="Sisesta kood" type="tel" inputmode="numeric">
+      <button class="btn bs" id="btnJ">LIITU REAL MADRID ⚪</button>
+      <div id="errMsg"></div>
+    </div>
+  </div>
+
+  <!-- WAITING -->
+  <div class="screen" id="sWait">
+    <div class="slogo">⚽ LA CLÁSICA</div>
+    <div class="ssub" id="wSub">Oota vastast</div>
+    <div class="card">
+      <div class="clbl" id="wLbl">Jaga seda koodi sõbrale</div>
+      <div id="codeDisp">· · · · · ·</div>
+      <button class="btn bg" id="btnCopy">Kopeeri kood</button>
+      <div id="statusMsg"><span class="sdot"></span>Ootan…</div>
+    </div>
+  </div>
+
+  <!-- HALFTIME -->
+  <div class="screen" id="sHalf">
+    <div class="htt">Vaheaeg</div>
+    <div class="htt2"><span>FC BARCELONA</span><span class="sep">·</span><span>REAL MADRID</span></div>
+    <div class="hts"><span id="htA">0</span> : <span id="htB">0</span></div>
+    <div class="htcd" id="htCd">Jätkub 5 sekundi pärast…</div>
+  </div>
+
+  <!-- FULLTIME -->
+  <div class="screen" id="sFull">
+    <div class="htt">Mäng läbi!</div>
+    <div class="htt2"><span>FC BARCELONA</span><span class="sep">·</span><span>REAL MADRID</span></div>
+    <div class="hts"><span id="ftA">0</span> : <span id="ftB">0</span></div>
+    <div class="wlbl" id="ftWL">Võitja</div>
+    <div class="wnam" id="ftWN">—</div>
+    <div style="margin-top:26px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+      <button class="btn bp" id="btnR" style="display:none;">Uus mäng</button>
+      <button class="btn bg" onclick="location.reload()">Tagasi menüüsse</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ────────────────────────────────────────
+const W=800,H=480,HDUR=120,GCD=2500;
+const PS=3.0,BF=0.982,KP=9.5,PP=6.2,PR=13,BR=9;
+const FX1=60,FX2=740,FY1=50,FY2=430,FW=680,FH=380;
+const GW=14,GH=80,GY1=200,GY2=280; // H/2±40
+const FORM=[[.06,.5],[.25,.27],[.25,.73],[.50,.5],[.72,.5]];
+
+// ─── CANVAS ───────────────────────────────────────────
+const cv=document.getElementById('gc'),ctx=cv.getContext('2d');
+let canvasOX=0,canvasOY=0,canvasSC=1;
+function resize(){
+  const vw=innerWidth,vh=innerHeight;
+  canvasSC=Math.min(vw/W,vh/H);
+  const cw=Math.floor(W*canvasSC),ch=Math.floor(H*canvasSC);
+  canvasOX=Math.floor((vw-cw)/2); canvasOY=Math.floor((vh-ch)/2);
+  cv.width=W;cv.height=H;cv.style.width=cw+'px';cv.style.height=ch+'px';
+  const hud=document.getElementById('hud'),tc=document.getElementById('tc'),gn=document.getElementById('gnotif');
+  if(hud){hud.style.width=cw+'px';hud.style.left=canvasOX+'px';hud.style.top=canvasOY+'px';}
+  if(tc){tc.style.width=cw+'px';tc.style.left=canvasOX+'px';tc.style.bottom=canvasOY+'px';}
+  if(gn){gn.style.top=(canvasOY+Math.floor(ch*.12))+'px';}
+}
+addEventListener('resize',resize);resize();
+
+// ─── STATE ────────────────────────────────────────────
+let role=null,peer=null,conn=null;
+const G={
+  ball:{x:W/2,y:H/2,vx:0,vy:0},
+  pl:[],
+  score:[0,0],half:1,time:HDUR,
+  phase:'lobby',  // starts as lobby so guest detects first 'play' transition
+  gc:0,sw:false,gseq:0,gteam:-1
+};
+// Sticky controlled-player indices (avoids twitching on frame-by-frame nearest recalc)
+let ctrlH=null,ctrlG=null; // controlled player objects
+const LI={dx:0,dy:0,kick:false,pass:false};
+const RI={dx:0,dy:0,kick:false,pass:false}; // remote (guest) input
+
+// ─── PLAYERS ──────────────────────────────────────────
+function initPl(sw){
+  G.pl=[];
+  for(let i=0;i<5;i++){
+    const bx=sw?1-FORM[i][0]:FORM[i][0],mx=sw?FORM[i][0]:1-FORM[i][0],fy=FORM[i][1];
+    G.pl.push({team:0,idx:i,x:FX1+bx*FW,y:FY1+fy*FH,vx:0,vy:0});
+    G.pl.push({team:1,idx:i,x:FX1+mx*FW,y:FY1+fy*FH,vx:0,vy:0});
+  }
+  ctrlH=null;ctrlG=null; // reset sticky selection on kickoff
+}
+function resetKO(){G.ball={x:W/2,y:H/2,vx:0,vy:0};initPl(G.sw);G.gc=0;}
+
+// ─── STICKY PLAYER SELECTION ──────────────────────────
+// Only switch controlled player when someone is clearly closer (HYSTERESIS = 50px²)
+const HYST=50*50;
+function updateCtrl(){
+  // Team 0 (host)
+  let best0=null,bd0=1e9;
+  for(const p of G.pl){if(p.team!==0)continue;const d=dist2(p,G.ball);if(d<bd0){bd0=d;best0=p;}}
+  if(!ctrlH||dist2(best0,G.ball)<dist2(ctrlH,G.ball)-HYST)ctrlH=best0;
+  // Team 1 (guest)
+  let best1=null,bd1=1e9;
+  for(const p of G.pl){if(p.team!==1)continue;const d=dist2(p,G.ball);if(d<bd1){bd1=d;best1=p;}}
+  if(!ctrlG||dist2(best1,G.ball)<dist2(ctrlG,G.ball)-HYST)ctrlG=best1;
+}
+function dist2(a,b){return(a.x-b.x)**2+(a.y-b.y)**2;}
+
+// ─── AI ───────────────────────────────────────────────
+function aiMove(p){
+  const b=G.ball,atR=(p.team===0&&!G.sw)||(p.team===1&&G.sw);
+  const oG=atR?FX2:FX1,myG=atR?FX1:FX2;
+  const dx=b.x-p.x,dy=b.y-p.y,d=Math.hypot(dx,dy);
+  let tx=p.x,ty=p.y;
+  if(p.idx===0){
+    tx=myG+(atR?36:-36);
+    ty=Math.max(GY1+PR,Math.min(GY2-PR,b.y));
+  } else if(d<170||(p.idx===4&&d<290)){
+    tx=b.x;ty=b.y;
+    if(d<PR+BR+10){
+      const dir=oG-b.x,dm=Math.abs(dir)||1;
+      G.ball.vx=(dir/dm)*KP*.72;G.ball.vy=(b.y-H/2)*.04;
+    }
+  } else {
+    const fi=FORM[p.idx],nx=atR?fi[0]:1-fi[0];
+    tx=FX1+nx*FW;ty=FY1+fi[1]*FH;
+  }
+  const pdx=tx-p.x,pdy=ty-p.y,pd=Math.hypot(pdx,pdy);
+  p.vx=pd>.5?pdx/pd*PS*.72:0;
+  p.vy=pd>.5?pdy/pd*PS*.72:0;
+}
+
+// ─── PHYSICS (host only) ──────────────────────────────
+function physics(){
+  if(G.phase!=='play')return;
+  updateCtrl();
+  for(const p of G.pl){
+    if(p===ctrlH){
+      p.vx=LI.dx*PS;p.vy=LI.dy*PS;
+      if(LI.kick){kick(p);LI.kick=false;}
+      if(LI.pass){pass(p,0);LI.pass=false;}
+    } else if(p===ctrlG){
+      p.vx=RI.dx*PS;p.vy=RI.dy*PS;
+      if(RI.kick){kick(p);RI.kick=false;}
+      if(RI.pass){pass(p,1);RI.pass=false;}
+    } else {
+      aiMove(p);
+    }
+    p.x+=p.vx;p.y+=p.vy;
+    p.x=Math.max(FX1+PR,Math.min(FX2-PR,p.x));
+    p.y=Math.max(FY1+PR,Math.min(FY2-PR,p.y));
+  }
+  // Ball movement
+  const b=G.ball;
+  b.vx*=BF;b.vy*=BF;b.x+=b.vx;b.y+=b.vy;
+  // Wall bounces
+  if(b.y<FY1+BR){b.y=FY1+BR;b.vy=Math.abs(b.vy)*.75;}
+  if(b.y>FY2-BR){b.y=FY2-BR;b.vy=-Math.abs(b.vy)*.75;}
+  if(b.x<FX1+BR&&(b.y<GY1||b.y>GY2)){b.x=FX1+BR;b.vx=Math.abs(b.vx)*.75;}
+  if(b.x>FX2-BR&&(b.y<GY1||b.y>GY2)){b.x=FX2-BR;b.vx=-Math.abs(b.vx)*.75;}
+  if(b.x<FX1-GW+BR){b.x=FX1-GW+BR;b.vx=Math.abs(b.vx)*.5;}
+  if(b.x>FX2+GW-BR){b.x=FX2+GW-BR;b.vx=-Math.abs(b.vx)*.5;}
+  // Player-ball collision
+  for(const p of G.pl){
+    const dx=b.x-p.x,dy=b.y-p.y,dist=Math.hypot(dx,dy),mn=PR+BR;
+    if(dist<mn&&dist>.01){
+      const nx=dx/dist,ny=dy/dist,ov=mn-dist;
+      b.x+=nx*ov;b.y+=ny*ov;
+      const rv=(b.vx-p.vx)*nx+(b.vy-p.vy)*ny;
+      if(rv<0){b.vx-=1.6*rv*nx;b.vy-=1.6*rv*ny;}
+    }
+  }
+  // Goal detection (skip during cooldown)
+  if(G.gc>0){G.gc-=16;return;}
+  const LD=G.sw?1:0;
+  if(b.x<FX1-GW/2&&b.y>GY1&&b.y<GY2)doGoal(1-LD);
+  else if(b.x>FX2+GW/2&&b.y>GY1&&b.y<GY2)doGoal(LD===0?1:0);
+}
+
+function kick(p){
+  const b=G.ball,dx=b.x-p.x,dy=b.y-p.y;
+  if(Math.hypot(dx,dy)>PR+BR+15)return;
+  const kx=Math.abs(p.vx)>.15?p.vx:dx,ky=Math.abs(p.vy)>.15?p.vy:dy;
+  const km=Math.hypot(kx,ky)||1;b.vx=kx/km*KP;b.vy=ky/km*KP;
+}
+function pass(p,team){
+  const b=G.ball;
+  if(Math.hypot(b.x-p.x,b.y-p.y)>PR+BR+15)return;
+  let best=null,bd=1e9;
+  for(const t of G.pl){if(t.team!==team||t===p)continue;const d=dist2(t,p);if(d<bd){bd=d;best=t;}}
+  if(!best)return;
+  const tx=best.x-b.x,ty=best.y-b.y,tm=Math.hypot(tx,ty)||1;
+  b.vx=tx/tm*PP;b.vy=ty/tm*PP;
+}
+function doGoal(team){
+  G.score[team]++;G.gteam=team;G.gseq++;G.gc=GCD;
+  goalNotif(team);updateHUD();
+  setTimeout(()=>{resetKO();bcast();},GCD);
+}
+
+// ─── TIMER ────────────────────────────────────────────
+let lastTick=null;
+function tickTimer(now){
+  if(!lastTick){lastTick=now;return;}
+  if(G.phase!=='play'||G.gc>0){lastTick=now;return;}
+  G.time-=(now-lastTick)/1000;lastTick=now;
+  if(G.time<=0){G.time=0;G.half===1?doHalftime():doFulltime();}
+}
+function doHalftime(){
+  G.phase='halftime';
+  document.getElementById('htA').textContent=G.score[0];
+  document.getElementById('htB').textContent=G.score[1];
+  showScr('sHalf');bcast();
+  let cd=5;const el=document.getElementById('htCd');
+  const iv=setInterval(()=>{
+    el.textContent=`Jätkub ${cd} sekundi pärast…`;cd--;
+    if(cd<0){clearInterval(iv);G.half=2;G.time=HDUR;G.sw=true;resetKO();G.phase='play';lastTick=null;showScr(null);document.getElementById('hlbl').textContent='2. POOLAEG';bcast();}
+  },1000);
+}
+function doFulltime(){G.phase='fulltime';showScr('sFull');renderFT();bcast();}
+function renderFT(){
+  document.getElementById('ftA').textContent=G.score[0];
+  document.getElementById('ftB').textContent=G.score[1];
+  const [a,b]=G.score,wl=$('ftWL'),wn=$('ftWN');
+  if(a>b){wl.textContent='Võitja';wn.textContent='FC BARCELONA 🔵🔴';wn.style.color='var(--bg)';}
+  else if(b>a){wl.textContent='Võitja';wn.textContent='REAL MADRID ⚪';wn.style.color='var(--mw)';}
+  else{wl.textContent='Tulemus';wn.textContent='VIIK ⚖️';wn.style.color='#aaa';}
+  if(role==='host')$('btnR').style.display='block';
+}
+
+// ─── DRAWING ──────────────────────────────────────────
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  drawBg();drawField();drawGoals();
+  for(const p of G.pl)drawPlayer(p);
+  drawBall();
+}
+
+function drawBg(){
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a1535');g.addColorStop(1,'#060d20');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  const rows=[{y:2,h:18,c:['#004D98','#A50044','#004D98','#EDBB00']},{y:22,h:11,c:['#A50044','#004D98','#EDBB00','#004D98']},{y:H-33,h:11,c:['#004D98','#EDBB00','#A50044','#004D98']},{y:H-20,h:18,c:['#EDBB00','#A50044','#004D98','#A50044']}];
+  for(const r of rows)for(let x=0;x<W;x+=18){ctx.fillStyle=r.c[Math.floor(x/18)%r.c.length]+'88';ctx.fillRect(x,r.y,17,r.h);}
+  for(let y=38;y<H-38;y+=15){const c=['#004D98','#A50044','#EDBB00'];ctx.fillStyle=c[Math.floor(y/15)%c.length]+'60';ctx.fillRect(0,y,56,13);ctx.fillStyle=c[(Math.floor(y/15)+1)%c.length]+'60';ctx.fillRect(W-56,y,56,13);}
+}
+function drawField(){
+  const fg=ctx.createLinearGradient(FX1,FY1,FX1,FY2);fg.addColorStop(0,'#2d7a2d');fg.addColorStop(.5,'#347a34');fg.addColorStop(1,'#2d7a2d');ctx.fillStyle=fg;ctx.fillRect(FX1,FY1,FW,FH);
+  for(let i=0;i<8;i++){ctx.fillStyle=i%2?'rgba(255,255,255,.03)':'rgba(0,0,0,.04)';ctx.fillRect(FX1+i*(FW/8),FY1,FW/8,FH);}
+  ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=2;ctx.strokeRect(FX1,FY1,FW,FH);
+  ctx.beginPath();ctx.moveTo(W/2,FY1);ctx.lineTo(W/2,FY2);ctx.stroke();
+  ctx.beginPath();ctx.arc(W/2,H/2,50,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(W/2,H/2,3,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.9)';ctx.fill();
+  ctx.strokeRect(FX1,H/2-60,84,120);ctx.strokeRect(FX2-84,H/2-60,84,120);
+  ctx.beginPath();ctx.arc(FX1+57,H/2,3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(FX2-57,H/2,3,0,Math.PI*2);ctx.fill();
+}
+function drawGoals(){
+  ctx.lineWidth=3;ctx.strokeStyle='rgba(255,255,255,.95)';ctx.fillStyle='rgba(255,255,255,.06)';
+  ctx.beginPath();ctx.rect(FX1-GW,GY1,GW,GH);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.rect(FX2,GY1,GW,GH);ctx.fill();ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,.15)';ctx.lineWidth=.7;
+  for(let y=GY1+9;y<GY2;y+=9){ctx.beginPath();ctx.moveTo(FX1-GW,y);ctx.lineTo(FX1,y);ctx.stroke();ctx.beginPath();ctx.moveTo(FX2,y);ctx.lineTo(FX2+GW,y);ctx.stroke();}
+  for(let x=FX1-GW+8;x<FX1;x+=8){ctx.beginPath();ctx.moveTo(x,GY1);ctx.lineTo(x,GY2);ctx.stroke();}
+  for(let x=FX2+8;x<FX2+GW;x+=8){ctx.beginPath();ctx.moveTo(x,GY1);ctx.lineTo(x,GY2);ctx.stroke();}
+  ctx.font='bold 10px Oswald,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  const LT=G.sw?1:0,RT=1-LT;
+  ctx.fillStyle=LT===0?'#004D98':'rgba(245,245,245,.75)';ctx.fillText(LT===0?'FCB':'RMA',FX1-GW/2,GY1-9);
+  ctx.fillStyle=RT===0?'#004D98':'rgba(245,245,245,.75)';ctx.fillText(RT===0?'FCB':'RMA',FX2+GW/2,GY1-9);
+}
+function drawPlayer(p){
+  const isH=p===ctrlH||p===ctrlG;
+  ctx.save();ctx.translate(p.x,p.y);
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(2,7,PR*.7,PR*.35,0,0,Math.PI*2);ctx.fill();
+  if(isH){ctx.shadowColor='#EDBB00';ctx.shadowBlur=15;}
+  ctx.save();ctx.beginPath();ctx.arc(0,0,PR,0,Math.PI*2);ctx.clip();
+  if(p.team===0){
+    ctx.fillStyle='#004D98';ctx.fillRect(-PR,-PR,PR*2,PR*2);
+    for(let i=-2;i<=2;i++)if(i%2===0){ctx.fillStyle='#A50044';ctx.fillRect(i*(PR/2),-PR,PR/2,PR*2);}
+  } else {
+    ctx.fillStyle='#E8E8E8';ctx.fillRect(-PR,-PR,PR*2,PR*2);
+    ctx.fillStyle='#C0A040';ctx.fillRect(-PR,-PR,PR*2,5);
+  }
+  ctx.restore();
+  ctx.shadowBlur=0;ctx.strokeStyle=isH?'rgba(237,187,0,.9)':'rgba(0,0,0,.5)';ctx.lineWidth=isH?2.5:1.5;
+  ctx.beginPath();ctx.arc(0,0,PR,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=p.team===0?'#fff':'#222';ctx.font='bold 9px Rajdhani,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(p.idx+1,0,1);
+  if(isH){ctx.fillStyle='#EDBB00';ctx.font='8px sans-serif';ctx.fillText('★',0,-PR-7);}
+  ctx.restore();
+}
+function drawBall(){
+  const b=G.ball;ctx.save();ctx.translate(b.x,b.y);
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(2,7,BR*.8,BR*.4,0,0,Math.PI*2);ctx.fill();
+  const bg=ctx.createRadialGradient(-BR*.3,-BR*.3,1,0,0,BR);bg.addColorStop(0,'#fff');bg.addColorStop(.6,'#ddd');bg.addColorStop(1,'#999');
+  ctx.fillStyle=bg;ctx.beginPath();ctx.arc(0,0,BR,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#222';ctx.lineWidth=.75;ctx.beginPath();ctx.arc(0,0,BR*.44,0,Math.PI*2);ctx.stroke();
+  for(let a=0;a<Math.PI*2;a+=Math.PI/3){ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*BR*.8,Math.sin(a)*BR*.8);ctx.stroke();}
+  const sg=ctx.createRadialGradient(-BR*.3,-BR*.35,0,-BR*.3,-BR*.35,BR*.5);sg.addColorStop(0,'rgba(255,255,255,.55)');sg.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=sg;ctx.beginPath();ctx.arc(0,0,BR,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+// ─── HUD ──────────────────────────────────────────────
+function updateHUD(){
+  $('sB').textContent=G.score[0];$('sM').textContent=G.score[1];
+  const s=Math.max(0,Math.ceil(G.time));
+  $('tmr').textContent=`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+}
+
+// ─── SCREENS ──────────────────────────────────────────
+function showScr(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const hud=$('hud'),tc=$('tc');
+  hud.style.display='none';tc.classList.remove('vis');
+  if(id){$(id).classList.add('active');}
+  else{
+    hud.style.display='flex';
+    if('ontouchstart' in window||navigator.maxTouchPoints>0)tc.classList.add('vis');
+  }
+}
+let lastGSeq=0;
+function goalNotif(team){
+  const el=$('gnotif');
+  el.textContent=team===0?'⚽ BARÇA VÄRAV!':'⚽ MADRID VÄRAV!';
+  el.style.background=team===0?'linear-gradient(135deg,rgba(0,77,152,.95),rgba(165,0,68,.95))':'linear-gradient(135deg,rgba(150,110,20,.95),rgba(180,140,30,.95))';
+  el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// ─── FULLSCREEN ───────────────────────────────────────
+// Called directly from user-gesture handlers
+function tryFS(){
+  const el=document.documentElement;
+  try{
+    if(el.requestFullscreen)el.requestFullscreen({navigationUI:'hide'}).catch(()=>{});
+    else if(el.webkitRequestFullscreen)el.webkitRequestFullscreen();
+    else if(el.mozRequestFullScreen)el.mozRequestFullScreen();
+  }catch(e){}
+  try{screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{});}catch(e){}
+}
+$('fsBtn').addEventListener('click',tryFS);
+
+// ─── NETWORK ──────────────────────────────────────────
+function bcast(){if(conn&&conn.open)conn.send({t:'s',d:pack()});}
+function pack(){
+  return{
+    bx:Math.round(G.ball.x),by:Math.round(G.ball.y),
+    bvx:+G.ball.vx.toFixed(2),bvy:+G.ball.vy.toFixed(2),
+    pl:G.pl.map(p=>({tm:p.team,i:p.idx,x:Math.round(p.x),y:Math.round(p.y)})),
+    sc:[...G.score],half:G.half,time:+G.time.toFixed(1),
+    ph:G.phase,sw:G.sw,gs:G.gseq,gt:G.gteam
+  };
+}
+
+// FIX: applyState detects ALL phase transitions because G.phase starts as 'lobby'
+function applyState(d){
+  G.ball={x:d.bx,y:d.by,vx:d.bvx,vy:d.bvy};
+  G.pl=d.pl.map(p=>({team:p.tm,idx:p.i,x:p.x,y:p.y,vx:0,vy:0}));
+  G.score=d.sc;G.half=d.half;G.time=d.time;G.sw=d.sw;
+  // Goal notif
+  if(d.gs>lastGSeq){lastGSeq=d.gs;goalNotif(d.gt);}
+  // Phase change → update screen
+  const prev=G.phase;G.phase=d.ph;
+  if(d.ph==='play'&&prev!=='play'){
+    // Also update sticky ctrl refs from received player list
+    ctrlH=null;ctrlG=null;
+    showScr(null);
+    $('hlbl').textContent=d.half===1?'1. POOLAEG':'2. POOLAEG';
+  } else if(d.ph==='halftime'&&prev!=='halftime'){
+    showScr('sHalf');$('htA').textContent=d.sc[0];$('htB').textContent=d.sc[1];
+  } else if(d.ph==='fulltime'&&prev!=='fulltime'){
+    showScr('sFull');G.score=d.sc;renderFT();
+  }
+  updateHUD();
+}
+
+// ─── HOST ─────────────────────────────────────────────
+function startHost(){
+  tryFS();
+  showScr('sWait');
+  const code=String(Math.floor(100000+Math.random()*900000));
+  $('codeDisp').textContent=code;
+  peer=new Peer('laclasica-'+code,{debug:0});
+  peer.on('open',()=>$('statusMsg').innerHTML='<span class="sdot"></span>Ootan ühendust…');
+  peer.on('connection',c=>{
+    conn=c;
+    c.on('open',()=>{
+      $('statusMsg').innerHTML='<span class="sdot" style="background:#00e676"></span>Ühendatud!';
+      setTimeout(()=>{startGame();bcast();},500);
+    });
+    c.on('data',d=>{
+      if(d.t==='i'){RI.dx=d.dx;RI.dy=d.dy;if(d.k)RI.kick=true;if(d.p)RI.pass=true;}
+    });
+  });
+  peer.on('error',e=>$('statusMsg').textContent='Viga: '+e.type);
+}
+
+// ─── GUEST ────────────────────────────────────────────
+function startGuest(code){
+  tryFS();
+  showScr('sWait');
+  $('wSub').textContent='Ühendan…';
+  $('wLbl').textContent='Kood';
+  $('codeDisp').textContent=code;
+  $('btnCopy').style.display='none';
+  $('statusMsg').innerHTML='<span class="sdot"></span>Ühendan…';
+  peer=new Peer({debug:0});
+  peer.on('open',()=>{
+    conn=peer.connect('laclasica-'+code,{reliable:true});
+    conn.on('open',()=>$('statusMsg').innerHTML='<span class="sdot" style="background:#00e676"></span>Ühendatud! Oota…');
+    conn.on('data',d=>{if(d.t==='s')applyState(d.d);});
+  });
+  peer.on('error',()=>{$('errMsg').textContent='Ei leia mängu. Kontrolli koodi.';showScr('sLobby');});
+}
+function sendInput(){
+  if(conn&&conn.open){
+    conn.send({t:'i',dx:LI.dx,dy:LI.dy,k:LI.kick,p:LI.pass});
+    LI.kick=false;LI.pass=false;
+  }
+}
+
+// ─── START GAME ───────────────────────────────────────
+function startGame(){
+  G.half=1;G.time=HDUR;G.score=[0,0];G.phase='play';
+  G.sw=false;G.gteam=-1;G.gseq=0;G.gc=0;
+  initPl(false);showScr(null);
+  $('hlbl').textContent='1. POOLAEG';lastTick=null;updateHUD();
+}
+
+// ─── KEYBOARD ─────────────────────────────────────────
+const keys={};
+addEventListener('keydown',e=>{keys[e.key]=true;if(e.key===' '||e.key==='Enter')e.preventDefault();});
+addEventListener('keyup',e=>{keys[e.key]=false;});
+function readKeys(){
+  let dx=0,dy=0;
+  if(keys['ArrowLeft']||keys['a']||keys['A'])dx--;
+  if(keys['ArrowRight']||keys['d']||keys['D'])dx++;
+  if(keys['ArrowUp']||keys['w']||keys['W'])dy--;
+  if(keys['ArrowDown']||keys['s']||keys['S'])dy++;
+  if(dx&&dy){dx*=.707;dy*=.707;}
+  LI.dx=dx;LI.dy=dy;
+  if((keys[' ']||keys['Enter'])&&!LI.kick)LI.kick=true;
+  if(keys['f']||keys['F'])LI.pass=true;
+}
+
+// ─── TOUCH ────────────────────────────────────────────
+const jw=$('jw'),jk=$('jk');let jid=null,jc={x:0,y:0};const JR=33;
+jw.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0],r=jw.getBoundingClientRect();jc={x:r.left+r.width/2,y:r.top+r.height/2};jid=t.identifier;},{passive:false});
+document.addEventListener('touchmove',e=>{
+  if(jid===null)return;
+  for(const t of e.changedTouches){
+    if(t.identifier!==jid)continue;
+    let dx=t.clientX-jc.x,dy=t.clientY-jc.y,d=Math.hypot(dx,dy);
+    if(d>JR){dx=dx/d*JR;dy=dy/d*JR;}
+    jk.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;
+    LI.dx=dx/JR;LI.dy=dy/JR;
+  }
+},{passive:false});
+document.addEventListener('touchend',e=>{for(const t of e.changedTouches)if(t.identifier===jid){jid=null;jk.style.transform='translate(-50%,-50%)';LI.dx=0;LI.dy=0;}});
+const KB=$('kb'),PB=$('pb');
+KB.addEventListener('touchstart',e=>{e.preventDefault();LI.kick=true;KB.classList.add('pr');},{passive:false});
+KB.addEventListener('touchend',()=>KB.classList.remove('pr'));
+PB.addEventListener('touchstart',e=>{e.preventDefault();LI.pass=true;PB.classList.add('pr');},{passive:false});
+PB.addEventListener('touchend',()=>PB.classList.remove('pr'));
+KB.addEventListener('mousedown',()=>{LI.kick=true;KB.classList.add('pr');});KB.addEventListener('mouseup',()=>KB.classList.remove('pr'));
+PB.addEventListener('mousedown',()=>{LI.pass=true;PB.classList.add('pr');});PB.addEventListener('mouseup',()=>PB.classList.remove('pr'));
+
+// ─── MAIN LOOP ────────────────────────────────────────
+let fc=0;
+function loop(now){
+  requestAnimationFrame(loop);
+  if(G.phase==='play'){
+    readKeys();
+    if(role==='host'){
+      tickTimer(now);physics();updateHUD();
+      fc++;if(fc%2===0)bcast();
+    } else if(role==='guest'){
+      fc++;if(fc%2===0)sendInput();
+      // Guest also updates sticky ctrl for rendering (uses received player positions)
+      if(G.pl.length>0)updateCtrl();
+    }
+  }
+  draw();
+}
+requestAnimationFrame(loop);
+
+// ─── BUTTONS ──────────────────────────────────────────
+function $(id){return document.getElementById(id);}
+$('btnH').addEventListener('click',()=>{role='host';startHost();});
+$('btnJ').addEventListener('click',()=>{
+  const c=$('inpCode').value.trim();
+  if(!/^\d{6}$/.test(c)){$('errMsg').textContent='Sisesta 6-kohaline kood';return;}
+  role='guest';startGuest(c);
+});
+$('btnCopy').addEventListener('click',()=>{
+  const c=$('codeDisp').textContent.replace(/\s/g,'');
+  navigator.clipboard?.writeText(c).then(()=>{$('btnCopy').textContent='✓ Kopeeritud!';setTimeout(()=>$('btnCopy').textContent='Kopeeri kood',2000);});
+});
+$('inpCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('btnJ').click();});
+$('btnR').addEventListener('click',()=>{
+  G.score=[0,0];G.half=1;G.time=HDUR;G.sw=false;G.gteam=-1;G.gseq=0;G.gc=0;
+  initPl(false);G.phase='play';lastTick=null;showScr(null);$('hlbl').textContent='1. POOLAEG';updateHUD();bcast();
+});
+</script>
+</body>
+</html>
